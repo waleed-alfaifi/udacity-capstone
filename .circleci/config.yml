@@ -32,7 +32,11 @@ jobs:
             docker buildx build --platform linux/amd64 -t udacity-capstone .
             export REMOTE_IMAGE=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/udacity-capstone:latest
             echo "REMOTE_IMAGE is $REMOTE_IMAGE"
-            docker tag udacity-capstone:latest ${REMOTE_IMAGE}
+
+            # list docker images
+            docker images
+            
+            docker tag udacity-capstone:latest $REMOTE_IMAGE
             docker push ${REMOTE_REPO}
           
 
