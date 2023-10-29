@@ -1,6 +1,9 @@
 version: 2.1
 
 
+orbs:
+  aws-cli: circleci/aws-cli@4.0
+
 jobs:
   lint:
     docker:
@@ -19,7 +22,14 @@ jobs:
       - add_ssh_keys:
           fingerprints:
             - "43:c4:8c:64:a0:ca:d0:0d:74:52:59:ea:fe:4c:e9:5c"
-      - run: sh ./deploy.sh
+      
+      # install AWS CLI
+      - aws-cli/setup:
+          profile_name: default
+      - run: |
+          # test AWS CLI
+          aws --version
+
 
 
 workflows:
