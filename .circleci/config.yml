@@ -50,16 +50,38 @@ jobs:
           name: Configure kubectl
           command: |
             aws eks --region ${AWS_DEFAULT_REGION} update-kubeconfig --name ${CLUSTER_NAME}
-            cat ~/.kube/config
             kubectl get svc
       # Create a deployment on the cluster
       - run:
-          name: Create deployment
+          name: Create a new deployment
           command: |
             kubectl create deployment "$IMAGE_NAME-${CIRCLE_WORKFLOW_ID:0:7}" --port=3000 --image=${ECR_REPOSITORY}/${IMAGE_NAME}:latest
-            kubectl label deployment "$IMAGE_NAME-${CIRCLE_WORKFLOW_ID:0:7}" app="$IMAGE_NAME-${CIRCLE_WORKFLOW_ID:0:7}"
-            kubectl get pods            
+            kubectl label deployment "$IMAGE_NAME-${CIRCLE_WORKFLOW_ID:0:7}" version="${CIRCLE_WORKFLOW_ID:0:7}"
+            kubectl get pods
+      # Smoke test the new deployment
+      - run:
+          name: Smoke test the new deployment
+          command: |
+            kubectl exec deployment/"$IMAGE_NAME-${CIRCLE_WORKFLOW_ID:0:7}" -- curl -s http://localhost:3000
+      # If the smoke test passes, update the service to point to the new deployment
+      - run:
+          name: Update the service to point to the new deployment
+          command: |
+            kubectl expose deployment/"$IMAGE_NAME-${CIRCLE_WORKFLOW_ID:0:7}" --port=5000 --target-port=3000
+            kubectl get svc
+      # Delete the old deployment
+      - run:
+          name: Delete the old deployment
+          command: |
+            # Get old deployments that are not equal to the current deployment
+            OLD_DEPLOYMENTS=$(kubectl get deployments -l version!="${CIRCLE_WORKFLOW_ID:0:7}" -o jsonpath='{.items[*].metadata.name}')
+            echo OLD_DEPLOYMENTS=$OLD_DEPLOYMENTS
 
+            # Delete old deployments
+            kubectl delete deployments $OLD_DEPLOYMENTS
+
+            kubectl get deployments
+            kubectl get services
 workflows:
   default:
     jobs:
