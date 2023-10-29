@@ -3,7 +3,7 @@ const hostname = '0.0.0.0';
 const port = 3000;
 
 // count the number of requests
-let counter = 0;
+let counter = 0; ==12
 
 const server = http.createServer((req, res) => {
   
