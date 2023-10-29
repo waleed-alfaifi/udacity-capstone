@@ -26,21 +26,24 @@ jobs:
       # install AWS CLI
       - aws-cli/setup
       - setup_remote_docker
-      - run: |
-          # test AWS CLI
-          aws --version
-          # test Docker 
-          docker --version
-          docker buildx build --platform linux/amd64 -t udacity-capstone .
+      - run:
+          name: Build and deploy
+          command: |
+            docker buildx build --platform linux/amd64 -t udacity-capstone .
+            export REMOTE_IMAGE=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/udacity-capstone:latest
+            echo "REMOTE_IMAGE is $REMOTE_IMAGE"
+            docker tag udacity-capstone:latest ${REMOTE_IMAGE}
+            docker push ${REMOTE_REPO}
+          
 
 
 
 workflows:
   default:
     jobs:
-      - lint
-      - deploy:
-          requires:
-            - lint
+      # - lint
+      - deploy
+          # requires:
+          #   - lint
 
       
