@@ -1,0 +1,33 @@
+version: 2.1
+
+
+jobs:
+  lint:
+    docker:
+      - image: cimg/node:18.4
+    steps:
+      - checkout
+      - run: npm install
+      - run: npm run lint
+
+  deploy:
+    docker:
+      - image: cimg/node:18.4
+    steps:
+      - checkout
+      # add AWS ssh key
+      # - add_ssh_keys:
+      #     fingerprints:
+      #       - ""
+      - run: ./deploy.sh
+
+
+workflows:
+  default:
+    jobs:
+      - lint
+      - deploy:
+          requires:
+            - lint
+
+      
