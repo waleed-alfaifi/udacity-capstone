@@ -24,8 +24,7 @@ jobs:
             - "43:c4:8c:64:a0:ca:d0:0d:74:52:59:ea:fe:4c:e9:5c"
       
       # install AWS CLI
-      - aws-cli/setup:
-          profile_name: default
+      - aws-cli/setup
       - run: |
           # test AWS CLI
           aws --version
