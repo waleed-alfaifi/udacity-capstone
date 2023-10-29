@@ -25,9 +25,13 @@ jobs:
       
       # install AWS CLI
       - aws-cli/setup
+      - setup_remote_docker
       - run: |
           # test AWS CLI
           aws --version
+          # test Docker 
+          docker --version
+          docker buildx build --platform linux/amd64 -t udacity-capstone .
 
 
 
