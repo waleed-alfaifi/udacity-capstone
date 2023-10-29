@@ -20,6 +20,7 @@ jobs:
       CLUSTER_NAME: capstone-project # this should be already created otherwise this jobs won't work
       IMAGE_NAME: udacity-capstone # there should exist an ECR repository with this name
     steps:
+      - checkout
       - aws-cli/setup
       - setup_remote_docker
       - run:
