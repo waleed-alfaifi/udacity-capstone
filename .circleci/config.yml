@@ -13,21 +13,13 @@ jobs:
       - checkout
       - run: npm install
       - run: npm run lint
-
-  deploy:
+  build-docker:
     docker:
       - image: cimg/node:18.4
     environment:
       CLUSTER_NAME: capstone-project # this should be already created otherwise this jobs won't work
       IMAGE_NAME: udacity-capstone # there should exist an ECR repository with this name
     steps:
-      - checkout
-      # add AWS ssh key
-      - add_ssh_keys:
-          fingerprints:
-            - "43:c4:8c:64:a0:ca:d0:0d:74:52:59:ea:fe:4c:e9:5c"
-      
-      # install AWS CLI
       - aws-cli/setup
       - setup_remote_docker
       - run:
@@ -44,6 +36,15 @@ jobs:
             aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${ECR_REPOSITORY}
             # push docker image to AWS ECR
             docker push ${ECR_REPOSITORY}/${IMAGE_NAME}:latest
+  deploy-kubernetes:
+    docker:
+      - image: cimg/node:18.4
+    environment:
+      CLUSTER_NAME: capstone-project # this should be already created otherwise this jobs won't work
+      IMAGE_NAME: udacity-capstone # there should exist an ECR repository with this name
+    steps:
+      - checkout
+      - aws-cli/setup
       - kubernetes/install-kubectl
       # Configure kubectl to access the cluster
       - run:
@@ -51,7 +52,7 @@ jobs:
           command: |
             aws eks --region ${AWS_DEFAULT_REGION} update-kubeconfig --name ${CLUSTER_NAME}
             kubectl get svc
-      # Create a deployment on the cluster
+      # Create a new deployment on the cluster
       - run:
           name: Create a new deployment
           command: |
@@ -68,10 +69,23 @@ jobs:
           name: Update the service to point to the new deployment
           command: |
             kubectl expose deployment/"$IMAGE_NAME-${CIRCLE_WORKFLOW_ID:0:7}" --port=5000 --target-port=3000
+            kubectl label service "$IMAGE_NAME-${CIRCLE_WORKFLOW_ID:0:7}" version="${CIRCLE_WORKFLOW_ID:0:7}"
             kubectl get svc
-      # Delete the old deployment
+      # Delete old services
       - run:
-          name: Delete the old deployment
+          name: Delete old services
+          command: |
+            # Get the old service
+            OLD_SERVICES=$(kubectl get services -l version!="${CIRCLE_WORKFLOW_ID:0:7}",provider!=kubernetes -o jsonpath='{.items[*].metadata.name}')
+
+            echo OLD_SERVICES=$OLD_SERVICES
+            
+            # Delete old services
+            kubectl delete services $OLD_SERVICES
+            kubectl get svc
+      # Delete old deployments
+      - run:
+          name: Delete old deployments
           command: |
             # Get old deployments that are not equal to the current deployment
             OLD_DEPLOYMENTS=$(kubectl get deployments -l version!="${CIRCLE_WORKFLOW_ID:0:7}" -o jsonpath='{.items[*].metadata.name}')
@@ -81,13 +95,16 @@ jobs:
             kubectl delete deployments $OLD_DEPLOYMENTS
 
             kubectl get deployments
-            kubectl get services
+            kubectl get pods
 workflows:
   default:
     jobs:
-      # - lint
-      - deploy
-          # requires:
-          #   - lint
+      - lint
+      - build-docker:
+          requires:
+            - lint
+      - deploy-kubernetes:
+          requires:
+            - build-docker
 
       
