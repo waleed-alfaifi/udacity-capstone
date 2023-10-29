@@ -3,7 +3,7 @@ const hostname = '0.0.0.0';
 const port = 3000;
 
 // count the number of requests
-let counter = 0; ==12
+let counter = 0;
 
 const server = http.createServer((req, res) => {
   
@@ -19,7 +19,7 @@ const server = http.createServer((req, res) => {
 
   res.statusCode = 200;
   res.setHeader('Content-Type', 'text/plain');
-  res.end('Hello World, my name is Waleed');
+  res.end('Hello World, my name is Waleed and this is a New Version!');
 });
 
 server.listen(port, hostname, () => {
