@@ -40,7 +40,7 @@ jobs:
             # list docker images
             docker images
 
-            docker push $REMOTE_REPO
+            docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/udacity-capstone:latest
           
 
 
