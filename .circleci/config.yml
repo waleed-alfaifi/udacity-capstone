@@ -3,6 +3,7 @@ version: 2.1
 
 orbs:
   aws-cli: circleci/aws-cli@4.0
+  kubernetes: circleci/kubernetes@1.3.1
 
 jobs:
   lint:
@@ -16,6 +17,9 @@ jobs:
   deploy:
     docker:
       - image: cimg/node:18.4
+    environment:
+      CLUSTER_NAME: capstone-project # this should be already created otherwise this jobs won't work
+      IMAGE_NAME: udacity-capstone # there should exist an ECR repository with this name
     steps:
       - checkout
       # add AWS ssh key
@@ -27,10 +31,11 @@ jobs:
       - aws-cli/setup
       - setup_remote_docker
       - run:
-          name: Build and deploy
+          name: Build and push docker image
           command: |
-            docker buildx build --platform linux/amd64 -t udacity-capstone .
-            docker tag udacity-capstone:latest ${ECR_REPOSITORY}/udacity-capstone:latest
+            # Build and tag docker image
+            docker buildx build --platform linux/amd64 -t ${IMAGE_NAME} .
+            docker tag udacity-capstone:latest ${ECR_REPOSITORY}/${IMAGE_NAME}:latest
 
             # list docker images
             docker images
@@ -38,11 +43,22 @@ jobs:
             # login to AWS ECR
             aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${ECR_REPOSITORY}
             # push docker image to AWS ECR
-            docker push ${ECR_REPOSITORY}/udacity-capstone:latest
-
-          
-
-
+            docker push ${ECR_REPOSITORY}/${IMAGE_NAME}:latest
+      - kubernetes/install-kubectl
+      # Configure kubectl to access the cluster
+      - run:
+          name: Configure kubectl
+          command: |
+            aws eks --region ${AWS_DEFAULT_REGION} update-kubeconfig --name ${CLUSTER_NAME}
+            cat ~/.kube/config
+            kubectl get svc
+      # Create a deployment on the cluster
+      - run:
+          name: Create deployment
+          command: |
+            kubectl create deployment "$IMAGE_NAME-${CIRCLE_WORKFLOW_ID:0:7}" --port=3000 --image=${ECR_REPOSITORY}/${IMAGE_NAME}:latest
+            kubectl label deployment "$IMAGE_NAME-${CIRCLE_WORKFLOW_ID:0:7}" app="$IMAGE_NAME-${CIRCLE_WORKFLOW_ID:0:7}"
+            kubectl get pods            
 
 workflows:
   default:
